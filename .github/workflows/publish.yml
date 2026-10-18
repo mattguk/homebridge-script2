@@ -1,0 +1,37 @@
+name: Publish to npm
+# Publishes @mattguk/homebridge-script2 when a GitHub release is published.
+# Uses npm trusted publishing (OIDC), so there is no npm token in this repo;
+# provenance is attached automatically. The trusted publisher must be configured
+# on npmjs.com for this package, naming this repository and this workflow file.
+#
+# Release tags are mattguk-v<version>, not v<version>: the fork carries
+# upstream's v* tags, and ours must never collide with them.
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      # Trusted publishing needs npm 11.5.1 or later.
+      - run: npm install -g npm@^11.5.1
+      - name: Tag matches package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="mattguk-v$(node -p 'require("./package.json").version')"
+          if [ "$TAG" != "$version" ]; then echo "Release tag $TAG does not match package.json $version"; exit 1; fi
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm test
+      - run: npm run check:package
+      - run: npm publish --ignore-scripts

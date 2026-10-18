@@ -38,8 +38,8 @@ jobs:
           npm pack --ignore-scripts --json > "$RUNNER_TEMP/packed.json"
           script2_archive="$(node -p 'require(process.env.RUNNER_TEMP + "/packed.json")[0].filename')"
           npm install --prefix "$RUNNER_TEMP/script2-install" --ignore-scripts "$PWD/$script2_archive" "homebridge@$SCRIPT2_HB_VERSION"
-          SCRIPT2_PACKAGE_ROOT="$RUNNER_TEMP/script2-install/node_modules/homebridge-script2" node --test test/installed.cjs
-          SCRIPT2_HB_ROOT="$RUNNER_TEMP/script2-install/node_modules/homebridge" SCRIPT2_PACKAGE_ROOT="$RUNNER_TEMP/script2-install/node_modules/homebridge-script2" node scripts/homebridge-smoke.cjs
+          SCRIPT2_PACKAGE_ROOT="$RUNNER_TEMP/script2-install/node_modules/@mattguk/homebridge-script2" node --test test/installed.cjs
+          SCRIPT2_HB_ROOT="$RUNNER_TEMP/script2-install/node_modules/homebridge" SCRIPT2_PACKAGE_ROOT="$RUNNER_TEMP/script2-install/node_modules/@mattguk/homebridge-script2" node scripts/homebridge-smoke.cjs
   browser:
     runs-on: ubuntu-latest
     steps:

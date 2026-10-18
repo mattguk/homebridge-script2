@@ -7,7 +7,11 @@ const { dirname, resolve } = require("node:path");
 const { validate } = require("./homebridge-ui/public/validation");
 const { safeLogger, onceCallback } = require("./lib/safety");
 
-const PLUGIN_NAME = "homebridge-script2";
+const PLUGIN_NAME = "@mattguk/homebridge-script2";
+// Accessory UUIDs are seeded from the upstream package name, not ours, so that
+// moving over from homebridge-script2 keeps every accessory's HomeKit identity
+// (and with it rooms, scenes and automations). Never change this.
+const UUID_NAMESPACE = "homebridge-script2";
 const PLATFORM_NAME = "Script2Platform";
 
 module.exports = function (homebridge) {
@@ -88,7 +92,7 @@ class Script2Platform {
     try {
       for (const raw of devices) {
         const config = sanitizeDeviceConfig(raw);
-        const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${config.name}`);
+        const uuid = this.api.hap.uuid.generate(`${UUID_NAMESPACE}:${config.name}`);
         wanted.add(uuid);
         let accessory = this.accessories.get(uuid);
         const isNew = !accessory;

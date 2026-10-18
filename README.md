@@ -2,7 +2,18 @@
   <img src="https://raw.githubusercontent.com/pponce/homebridge-script2/master/assets/homebridge-script2-icon-512.png" width="128" height="128" alt="Script2 terminal and home icon">
 </p>
 
-# homebridge-script2
+# @mattguk/homebridge-script2
+
+> **This is a fork** of [homebridge-script2](https://github.com/pponce/homebridge-script2)
+> by pponce, published separately as `@mattguk/homebridge-script2`. Report
+> problems with this fork [here](https://github.com/mattguk/homebridge-script2/issues),
+> not upstream.
+>
+> **Switching from homebridge-script2:** uninstall `homebridge-script2` first;
+> the two cannot be installed together, because both provide the
+> `Script2Platform` platform. Your `config.json` block does not change, and
+> accessories keep their HomeKit identity, so rooms, scenes and automations
+> carry over. To go back, uninstall this and reinstall `homebridge-script2`.
 
 Run your own scripts from Apple Home and Siri using Homebridge.
 

@@ -1,8 +1,8 @@
 {
-  "name": "homebridge-script2",
+  "name": "@mattguk/homebridge-script2",
   "version": "1.0.4",
   "license": "MIT",
-  "description": "HomeKit script switches with file or command state, shared reads, serialized actions and optional early acknowledgement",
+  "description": "Fork of homebridge-script2. HomeKit script switches with file or command state, shared reads, serialized actions and optional early acknowledgement",
   "keywords": [
     "homebridge-plugin",
     "homebridge-script2",
@@ -15,7 +15,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pponce/homebridge-script2.git"
+    "url": "git+https://github.com/mattguk/homebridge-script2.git"
   },
   "engines": {
     "node": "^22.13.0 || ^24.0.0",
@@ -33,11 +33,11 @@
     "@homebridge/plugin-ui-utils": "2.2.6",
     "chokidar": "5.0.0"
   },
-  "displayName": "Script2",
+  "displayName": "Script2 (mattguk fork)",
   "main": "index.js",
-  "homepage": "https://github.com/pponce/homebridge-script2#readme",
+  "homepage": "https://github.com/mattguk/homebridge-script2#readme",
   "bugs": {
-    "url": "https://github.com/pponce/homebridge-script2/issues"
+    "url": "https://github.com/mattguk/homebridge-script2/issues"
   },
   "files": [
     "index.js",

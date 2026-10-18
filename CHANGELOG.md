@@ -1,5 +1,12 @@
 # Changelog
 
+## @mattguk/homebridge-script2 1.0.4 — fork
+
+First release of the fork: upstream `homebridge-script2` 1.0.4, unchanged apart
+from the package name. Accessory UUIDs are still generated from
+`homebridge-script2:<name>`, so switching from upstream keeps every accessory's
+HomeKit identity. Entries below this one are upstream's.
+
 ## 1.0.4 — 2026-10-13
 
 **Users on version 1.0.x can update normally. No configuration changes or migration are required. This also applies to 1.0.0-beta.1.**
