@@ -5,6 +5,7 @@ const { EventEmitter } = require('node:events');
 const plugin = require('../index');
 const { Script2DeviceLogic, Script2Platform } = plugin;
 const { validate } = require('../homebridge-ui/public/validation');
+const compileSchema = require('../scripts/check-schema.cjs');
 
 // presentState reads the module-level Characteristic, set when the plugin loads.
 plugin({ hap: { Characteristic: { On: 'On' }, Service: {} }, registerPlatform() {} });
@@ -21,11 +22,13 @@ function member(name, config = {}) {
   return { logic, commands, shown };
 }
 
-function group(...names) {
-  const members = names.map((name) => member(name));
+function link(members) {
   for (const m of members) m.logic.exclusivePeers = members.filter((p) => p !== m).map((p) => p.logic);
   return members;
 }
+const group = (...names) => link(names.map((name) => member(name)));
+// Inputs with no off command: deselected only by selecting another.
+const selector = (...names) => link(names.map((name) => member(name, { off: undefined })));
 
 test('a successful ON shows every other member OFF without running their commands', () => {
   const [ps5, nsw, atv] = group('PS5', 'Switch', 'ATV');
@@ -139,55 +142,67 @@ test('validation accepts a group name on on/off switches only', () => {
 
 test('an OFF from Home is checked against the device shortly after', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const [ps5] = group('PS5', 'Switch');
+  const [ps5] = selector('PS5', 'Switch');
   ps5.logic.lastStateRead = true;
   ps5.logic.lastStateReadAt = Date.now();
-  ps5.logic.setState(false, () => {});
-  ps5.commands[0].callback(null, '', '');
-  assert.equal(ps5.commands.length, 1);
+  let answer;
+  ps5.logic.setState(false, (error, value) => { answer = { error, value }; });
+  // Nothing to run: the OFF is answered at once.
+  assert.equal(ps5.commands.length, 0);
+  assert.deepEqual(answer, { error: null, value: false });
   t.mock.timers.tick(500);
   // A fresh read: the cached ON from before the OFF must not answer it.
-  assert.equal(ps5.commands[1].command, 'state-PS5');
-  ps5.commands[1].callback(null, 'true\n', '');
+  assert.equal(ps5.commands[0].command, 'state-PS5');
+  ps5.commands[0].callback(null, 'true\n', '');
   assert.deepEqual(ps5.shown, [true]);
   assert.equal(ps5.logic.currentState, true);
 });
 
 test('an OFF the device really took is left as it is', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const [ps5] = group('PS5', 'Switch');
+  const [ps5] = selector('PS5', 'Switch');
   ps5.logic.setState(false, () => {});
-  ps5.commands[0].callback(null, '', '');
   t.mock.timers.tick(500);
-  ps5.commands[1].callback(null, 'false\n', '');
+  ps5.commands[0].callback(null, 'false\n', '');
   assert.deepEqual(ps5.shown, []);
 });
 
 test('a peer turning ON before the check cancels it', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const [ps5, nsw] = group('PS5', 'Switch');
+  const [ps5, nsw] = selector('PS5', 'Switch');
   ps5.logic.setState(false, () => {});
-  ps5.commands[0].callback(null, '', '');
   nsw.logic.setState(true, () => {});
   nsw.commands[0].callback(null, '', '');
   t.mock.timers.tick(500);
-  assert.equal(ps5.commands.length, 1);
+  assert.equal(ps5.commands.length, 0);
   assert.deepEqual(ps5.shown, [false]);
 });
 
 test('a peer turning ON during the check discards its result', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const [ps5, nsw] = group('PS5', 'Switch');
+  const [ps5, nsw] = selector('PS5', 'Switch');
   ps5.logic.setState(false, () => {});
-  ps5.commands[0].callback(null, '', '');
   t.mock.timers.tick(500);
   nsw.logic.setState(true, () => {});
   nsw.commands[0].callback(null, '', '');
-  ps5.commands[1].callback(null, 'true\n', '');
+  ps5.commands[0].callback(null, 'true\n', '');
   assert.deepEqual(ps5.shown, [false]);
 });
 
-test('no check after a failed OFF, outside a group, or once stopped', (t) => {
+test('a member with a real off command runs it and is trusted, with no check', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const [zone1] = group('Zone 1', 'Zone 2');
+  let answer;
+  zone1.logic.setState(false, (error, value) => { answer = { error, value }; });
+  assert.equal(zone1.commands[0].command, 'off-Zone 1');
+  zone1.commands[0].callback(null, '', '');
+  assert.deepEqual(answer, { error: null, value: false });
+  t.mock.timers.tick(500);
+  assert.equal(zone1.commands.length, 1);
+  assert.deepEqual(zone1.shown, []);
+});
+
+test('no check after a failed OFF, or once stopped', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const [ps5] = group('PS5', 'Switch');
   ps5.logic.setState(false, () => {});
@@ -195,16 +210,20 @@ test('no check after a failed OFF, outside a group, or once stopped', (t) => {
   t.mock.timers.tick(500);
   assert.equal(ps5.commands.length, 1);
 
-  const lamp = member('Lamp', { exclusive_group: undefined });
-  lamp.logic.setState(false, () => {});
-  lamp.commands[0].callback(null, '', '');
-  t.mock.timers.tick(500);
-  assert.equal(lamp.commands.length, 1);
-
-  const [nsw] = group('Switch', 'ATV');
+  const [nsw] = selector('Switch', 'ATV');
   nsw.logic.setState(false, () => {});
-  nsw.commands[0].callback(null, '', '');
   nsw.logic.shutdown();
   t.mock.timers.tick(500);
-  assert.equal(nsw.commands.length, 1);
+  assert.equal(nsw.commands.length, 0);
+});
+
+test('validation lets off be left out only for exclusive_group members', () => {
+  const sw = { name: 'PS5', on: 'on', state: 'state' };
+  const check = (device) => validate({ platform: 'Script2Platform', on_off_switches: [device] }).valid;
+  assert.equal(check({ ...sw, exclusive_group: 'inputs' }), true);
+  assert.equal(check(sw), false);
+  assert.equal(check({ ...sw, off: '', exclusive_group: 'inputs' }), false);
+  const validateSchema = compileSchema();
+  assert.equal(validateSchema({ platform: 'Script2Platform', on_off_switches: [{ ...sw, exclusive_group: 'inputs' }] }), true);
+  assert.equal(validateSchema({ platform: 'Script2Platform', on_off_switches: [sw] }), false);
 });

@@ -21,7 +21,11 @@
         const label = `${list} #${index + 1}`;
         if (!object(device)) { errors.push(`${label} must be an object.`); return; }
         const required = list === 'on_off_switches' ? ['name', 'on', 'off'] : ['name', 'trigger'];
-        for (const key of required) if (typeof device[key] !== 'string' || !device[key].trim()) errors.push(`${label}: ${key} is required and must be a nonblank string.`);
+        for (const key of required) {
+          // A member of an exclusive group may leave off out: it is a selector input.
+          if (key === 'off' && device.off === undefined && device.exclusive_group !== undefined) continue;
+          if (typeof device[key] !== 'string' || !device[key].trim()) errors.push(`${label}: ${key} is required and must be a nonblank string.`);
+        }
         if (typeof device.name === 'string') {
           if (names.has(device.name)) errors.push(`${label}: duplicate accessory name. Names must be unique across both lists.`);
           names.add(device.name);
