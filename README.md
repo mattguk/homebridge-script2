@@ -137,7 +137,7 @@ Name | Value | Required | Notes
 --- | --- | --- | ---
 `name` | _(custom)_ | yes | Accessory name shown in Home app
 `on` | _(custom)_ | yes | Script/command to execute the ON action
-`off` | _(custom)_ | yes | Script/command to execute the OFF action
+`off` | _(custom)_ | yes, unless in an `exclusive_group` | Script/command to execute the OFF action; see [Exclusive groups](#exclusive-groups)
 `fileState` | _(custom)_ | fileState or state | File flag used as current state; if set, it overrides `state`
 `state` | _(custom)_ | fileState or state | Script to determine current ON/OFF state
 `on_value` | _(custom)_ | no (default `"true"`) | Value matched against normalized `state` output
@@ -230,13 +230,14 @@ By default, a successful manual action does not restart the cache lifetime. Enab
 Some sets of switches describe one selector: the inputs of an AV switch, say, where selecting one deselects the rest. Give each such switch the same `exclusive_group` name. When one of them turns ON successfully from Home, every other member is shown OFF straight away, instead of staying lit until its next poll.
 
 ```json
-{ "name": "PS5",    "on": "/scripts/input.sh 1", "off": "true", "state": "/scripts/is-input.sh 1", "polling": true, "exclusive_group": "inputs" },
-{ "name": "Switch", "on": "/scripts/input.sh 2", "off": "true", "state": "/scripts/is-input.sh 2", "polling": true, "exclusive_group": "inputs" }
+{ "name": "PS5",    "on": "/scripts/input.sh 1", "state": "/scripts/is-input.sh 1", "polling": true, "exclusive_group": "inputs" },
+{ "name": "Switch", "on": "/scripts/input.sh 2", "state": "/scripts/is-input.sh 2", "polling": true, "exclusive_group": "inputs" }
 ```
 
 - Only the HomeKit tiles change. The other members' `off` commands are **not** run; the device is assumed to have deselected them itself.
 - It acts on a successful command, not on confirmed device state. If the device ignored the command, the tiles are wrong until the next poll, which corrects them. Keep `polling` on.
-- Turning a member OFF from Home does not deselect it on the device. Half a second after its `off` command succeeds, the plugin reads the member's state again and shows the result, so the tile springs back to ON if the input is still selected instead of waiting for the next poll.
+- Leave `off` out when a member can only be deselected by selecting another, as with the inputs above. Turning such a member OFF from Home runs nothing; half a second later the plugin reads its state again and shows the result, so the tile springs back to ON if the input is still selected instead of waiting for the next poll.
+- Give a member an `off` command when turning it off means something, as with sprinkler zones or fan speeds where none may be on. That command runs as usual and its result is trusted; there is no extra read. A placeholder such as `"off": "true"` counts as a real command, so remove it from selector inputs.
 - A member with its own ON or OFF still running or queued is left alone; the last command to finish wins.
 - A switch turned ON by anything other than Home (a front panel, say) is picked up by polling as before; the group does not act on it.
 - On/off switches only. Group names are matched exactly after trimming spaces, and a group with one member logs a warning.

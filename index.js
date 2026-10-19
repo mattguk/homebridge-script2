@@ -438,9 +438,12 @@ Script2DeviceLogic.prototype.startSetCommand = function (setRequest) {
 
   const command = powerOn ? this.onCommand : this.offCommand;
   const action = powerOn ? "on" : "off";
-  this.log.debug(`${this.name}: executing configured command.`);
+  // An exclusive_group member without an off command is a selector input:
+  // there is nothing to run, and the OFF succeeds without touching the device.
+  const execute = command ? this.commandExecutor : (_command, _options, done) => done(null, "", "");
+  this.log.debug(command ? `${this.name}: executing configured command.` : `${this.name}: no off command; nothing to run.`);
   let commandSettled = false;
-  this.commandExecutor(command, { timeout: this.commandTimeout }, (error, stdout, stderr) => {
+  execute(command, { timeout: this.commandTimeout }, (error, stdout, stderr) => {
     if (commandSettled) {
       this.log.warn(`Ignoring duplicate ${action} command completion for ${this.name}.`);
       return;
@@ -482,7 +485,7 @@ Script2DeviceLogic.prototype.startSetCommand = function (setRequest) {
     completedSet.callbacks.forEach((callbackEntry) => {
       this.settleSetCallback(callbackEntry, callbackError, powerOn);
     });
-    if (!callbackError && !powerOn && this.exclusiveGroup) this.confirmExclusiveOff();
+    if (!callbackError && !powerOn && !this.offCommand) this.confirmExclusiveOff();
   });
 };
 
@@ -778,7 +781,7 @@ Script2DeviceLogic.prototype.yieldToExclusivePeer = function (peerName) {
   this.resolveDeferredStateRequests(null, false, "exclusive-group");
 };
 
-// A member is deselected by selecting another, so an OFF from Home usually
+// A selector input is deselected by selecting another, so an OFF from Home
 // changes nothing on the device. Read it shortly after, rather than leave the
 // tile wrong until the next poll. The delay lets HomeKit finish with the OFF
 // first, so the corrected value is not overwritten by it.

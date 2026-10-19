@@ -91,7 +91,7 @@ function render() {
         timing(grid, device, 'auto_reset_ms', 'Reset delay', 'After the command finishes, reset the tile. This does not send another command.');
       } else {
         field(grid, device, 'on', 'ON command', { required:true });
-        field(grid, device, 'off', 'OFF command', { required:true });
+        field(grid, device, 'off', 'OFF command', { help:'Required, unless the switch is an input in an exclusive group that can only be deselected by selecting another.' });
         const selection = { source:device.fileState ? 'file' : 'command' };
         const source = node('div'); card.append(source);
         const drawSource = () => {
@@ -116,7 +116,7 @@ function render() {
         field(advanced, device, 'polling_on_start', 'Poll immediately on startup', { boolean:true, default:true });
         timing(advanced, device, 'state_cache_ttl_ms', 'State cache lifetime', '0 disables the TTL cache. Concurrent reads still share one running state command.');
         field(advanced, device, 'reset_state_cache_on_set', 'Reset the state cache after a successful action', { boolean:true });
-        field(advanced, device, 'exclusive_group', 'Exclusive group', { help:'Switches with the same group name are mutually exclusive. When one turns on successfully, the others show off at once; their off commands are not run.' });
+        field(advanced, device, 'exclusive_group', 'Exclusive group', { help:'Switches with the same group name are mutually exclusive. When one turns on successfully, the others show off at once; their off commands are not run. Leave OFF command empty for inputs that can only be deselected by selecting another.' });
         field(advanced, device, 'fail_on_state_exit_code', 'Fail state reads on a nonzero exit code', { boolean:true, help:'When off, usable output from an ordinary nonzero exit can determine state. Timeouts and terminated commands always fail.' });
       }
       field(advanced, device, 'unique_serial', 'Serial number', { help:'Optional accessory information. It does not replace the name-based HomeKit identity.' });

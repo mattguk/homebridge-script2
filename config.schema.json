@@ -41,7 +41,7 @@
             "exclusive_group": {
               "title": "Exclusive Group",
               "type": "string",
-              "description": "Switches sharing a group name are mutually exclusive: when one turns ON successfully, the others are shown OFF at once instead of at their next poll. Their off commands are not run."
+              "description": "Switches sharing a group name are mutually exclusive: when one turns ON successfully, the others are shown OFF at once instead of at their next poll. Their off commands are not run. Leave off out for inputs that can only be deselected by selecting another."
             },
             "on": {
               "title": "ON Command",
@@ -126,18 +126,35 @@
           "description": "Use Add Device to create entries.",
           "required": [
             "name",
-            "on",
-            "off"
+            "on"
           ],
-          "anyOf": [
+          "allOf": [
             {
-              "required": [
-                "state"
+              "anyOf": [
+                {
+                  "required": [
+                    "state"
+                  ]
+                },
+                {
+                  "required": [
+                    "fileState"
+                  ]
+                }
               ]
             },
             {
-              "required": [
-                "fileState"
+              "anyOf": [
+                {
+                  "required": [
+                    "off"
+                  ]
+                },
+                {
+                  "required": [
+                    "exclusive_group"
+                  ]
+                }
               ]
             }
           ],
