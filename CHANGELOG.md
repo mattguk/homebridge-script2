@@ -7,6 +7,13 @@ from the package name. Accessory UUIDs are still generated from
 `homebridge-script2:<name>`, so switching from upstream keeps every accessory's
 HomeKit identity. Entries below this one are upstream's.
 
+## [1.1.1](https://github.com/mattguk/homebridge-script2/compare/mattguk-v1.1.0...mattguk-v1.1.1) (2026-10-19)
+
+
+### Continuous Integration
+
+* stage npm releases for approval, and release on every change ([#2](https://github.com/mattguk/homebridge-script2/issues/2)) ([aced77b](https://github.com/mattguk/homebridge-script2/commit/aced77b127a0f84b631bdfbcef2fe40dcdede25f))
+
 ## [1.1.0](https://github.com/mattguk/homebridge-script2/compare/mattguk-v1.0.4...mattguk-v1.1.0) (2026-10-19)
 
 
