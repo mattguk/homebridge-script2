@@ -40,6 +40,7 @@ function sanitizeDeviceConfig(deviceConfig) {
     delete sanitized["reset_state_cache_on_set"];
     delete sanitized["fail_on_state_exit_code"];
     delete sanitized["homekit_set_ack_timeout_ms"];
+    delete sanitized["exclusive_group"];
   } else {
     delete sanitized["trigger"];
     delete sanitized["auto_reset_ms"];
@@ -108,6 +109,7 @@ class Script2Platform {
         this.accessories.set(uuid, accessory);
         this.instances.set(uuid, instance);
       }
+      linkExclusiveGroups(created, this.log);
       for (const instance of created) instance.startMonitoring();
     } catch {
       for (const instance of created) instance.shutdown();
@@ -149,6 +151,11 @@ function Script2DeviceLogic(log, config, commandExecutor = exec) {
   this.resetStateCacheOnSet = config["reset_state_cache_on_set"] === true;
   this.failOnStateExitCode = config["fail_on_state_exit_code"] === true;
   this.uniqueSerial = config["unique_serial"] || "script2 Serial Number";
+  this.exclusiveGroup =
+    typeof config["exclusive_group"] === "string" && config["exclusive_group"].trim()
+      ? config["exclusive_group"].trim()
+      : null;
+  this.exclusivePeers = [];
   this.onValue = String(this.onValue).trim().toLowerCase();
   this.watcher = null;
   this.pollTimer = null;
@@ -457,6 +464,7 @@ Script2DeviceLogic.prototype.startSetCommand = function (setRequest) {
         );
       }
       this.log.info(`Set ${this.name} to ${powerOn ? "ON" : "OFF"}`);
+      if (powerOn) this.releaseExclusivePeers();
     }
 
     const completedSet = this.inFlightSet;
@@ -713,6 +721,57 @@ Script2DeviceLogic.prototype.presentState = function (state) {
   if (this.stopped) return;
   try { this.switchService?.updateCharacteristic(Characteristic.On, state); }
   catch { this.log.error(`${this.name}: HomeKit state update failed.`); }
+};
+
+// exclusive_group: on/off switches sharing a group name are one selector, so a
+// successful ON shows every other member OFF at once instead of at its next
+// poll. Members' off commands are not run; polling stays the source of truth.
+function linkExclusiveGroups(instances, log) {
+  const groups = new Map();
+  for (const instance of instances) {
+    if (!instance.exclusiveGroup) continue;
+    if (!groups.has(instance.exclusiveGroup)) groups.set(instance.exclusiveGroup, []);
+    groups.get(instance.exclusiveGroup).push(instance);
+  }
+  for (const [group, members] of groups) {
+    if (members.length < 2) log.warn(`exclusive_group '${group}' has only one switch, so it has no effect.`);
+    for (const member of members) member.exclusivePeers = members.filter((peer) => peer !== member);
+  }
+}
+
+Script2DeviceLogic.prototype.releaseExclusivePeers = function () {
+  for (const peer of this.exclusivePeers) peer.yieldToExclusivePeer(this.name);
+};
+
+Script2DeviceLogic.prototype.yieldToExclusivePeer = function (peerName) {
+  // A set of this switch's own, running or queued, is newer intent. Its
+  // completion releases the others in turn, so leave this switch to it.
+  if (this.stopped || this.inFlightSet || this.pendingSetQueue.length) return;
+  this.log.debug(`${this.name}: OFF because ${peerName} turned ON (exclusive_group ${this.exclusiveGroup}).`);
+
+  // A state read already running may have sampled the device before the peer's
+  // command landed. Moving the generation on discards its result; its waiting
+  // callers would then never be answered, so answer them here, with OFF.
+  this.stateGeneration += 1;
+  const reads = this.inFlightStateRequest?.requests || [];
+  this.inFlightStateRequest = null;
+
+  // Without this, a HomeKit read inside state_cache_ttl_ms is served the
+  // pre-switch ON and the tile flips straight back.
+  if (this.stateCommand && !this.fileState) {
+    this.lastStateRead = false;
+    this.lastStateReadAt = Date.now();
+  }
+
+  // Unconditional: currentState records only what was pushed, not what HomeKit
+  // last read, so it cannot say whether the tile is showing ON.
+  this.currentState = false;
+  this.presentState(false);
+
+  for (const request of reads) request.callback(null, false, "exclusive-group");
+  // Reads parked by a post-set reconciliation that the generation change has
+  // just made stale; nothing else would ever answer them.
+  this.resolveDeferredStateRequests(null, false, "exclusive-group");
 };
 
 Script2DeviceLogic.prototype.bindServices = function (platformAccessory, startMonitoring = true) {

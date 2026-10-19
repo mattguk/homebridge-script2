@@ -27,7 +27,8 @@
           names.add(device.name);
         }
         if (Object.hasOwn(device, 'device_type')) errors.push(`${label}: remove legacy device_type; the list determines behavior.`);
-        for (const key of ['state', 'fileState', 'on_value', 'unique_serial']) if (device[key] !== undefined && (typeof device[key] !== 'string' || !device[key].trim())) errors.push(`${label}: ${key} must be a nonblank string.`);
+        for (const key of ['state', 'fileState', 'on_value', 'unique_serial', 'exclusive_group']) if (device[key] !== undefined && (typeof device[key] !== 'string' || !device[key].trim())) errors.push(`${label}: ${key} must be a nonblank string.`);
+        if (list === 'stateless_switches' && device.exclusive_group !== undefined) errors.push(`${label}: exclusive_group applies only to on/off switches.`);
         if (list === 'on_off_switches' && !device.state && !device.fileState) errors.push(`${label}: provide a State command or State file.`);
         if (device.fileState && typeof device.fileState === 'string' && !/^(\/|[A-Za-z]:[\\/]|\\\\)/.test(device.fileState)) errors.push(`${label}: fileState must be an absolute path.`);
         for (const [key, [min, max]] of Object.entries(timings)) if (device[key] !== undefined && (!Number.isInteger(device[key]) || device[key] < min || device[key] > max)) errors.push(`${label}: ${key} must be an integer between ${min} and ${max} milliseconds.`);

@@ -150,6 +150,7 @@ Name | Value | Required | Notes
 `command_timeout` | integer ms | no (default `10000`) | Maximum runtime for ON, OFF, and state commands
 `homekit_set_ack_timeout_ms` | integer ms | no (default `0`) | Opt in to acknowledging a still-running ON/OFF request after this delay; requires `state` or `fileState`
 `unique_serial` | _(custom)_ | no | Unique serial per accessory is recommended
+`exclusive_group` | _(custom)_ | no | Switches with the same group name are mutually exclusive; see [Exclusive groups](#exclusive-groups)
 
 ### Stateless switches
 
@@ -223,6 +224,21 @@ If both sources are supplied, `fileState` takes precedence. Polling options appl
 `state_cache_ttl_ms` sets how long a switch can reuse a stored command-state result. The cache is per switch. A value of `0` disables stored-result caching, but simultaneous reads still share a state command that is already running.
 
 By default, a successful manual action does not restart the cache lifetime. Enable `reset_state_cache_on_set` to seed the cache with the new state and restart that timer after a successful action.
+
+### Exclusive groups
+
+Some sets of switches describe one selector: the inputs of an AV switch, say, where selecting one deselects the rest. Give each such switch the same `exclusive_group` name. When one of them turns ON successfully from Home, every other member is shown OFF straight away, instead of staying lit until its next poll.
+
+```json
+{ "name": "PS5",    "on": "/scripts/input.sh 1", "off": "true", "state": "/scripts/is-input.sh 1", "polling": true, "exclusive_group": "inputs" },
+{ "name": "Switch", "on": "/scripts/input.sh 2", "off": "true", "state": "/scripts/is-input.sh 2", "polling": true, "exclusive_group": "inputs" }
+```
+
+- Only the HomeKit tiles change. The other members' `off` commands are **not** run; the device is assumed to have deselected them itself.
+- It acts on a successful command, not on confirmed device state. If the device ignored the command, the tiles are wrong until the next poll, which corrects them. Keep `polling` on.
+- A member with its own ON or OFF still running or queued is left alone; the last command to finish wins.
+- A switch turned ON by anything other than Home (a front panel, say) is picked up by polling as before; the group does not act on it.
+- On/off switches only. Group names are matched exactly after trimming spaces, and a group with one member logs a warning.
 
 ### Long-running commands and action order
 

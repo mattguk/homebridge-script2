@@ -38,6 +38,11 @@
               "type": "string",
               "description": "Recommended unique serial per device for HomeKit apps."
             },
+            "exclusive_group": {
+              "title": "Exclusive Group",
+              "type": "string",
+              "description": "Switches sharing a group name are mutually exclusive: when one turns ON successfully, the others are shown OFF at once instead of at their next poll. Their off commands are not run."
+            },
             "on": {
               "title": "ON Command",
               "type": "string",
@@ -153,7 +158,8 @@
             "fail_on_state_exit_code",
             "command_timeout",
             "homekit_set_ack_timeout_ms",
-            "unique_serial"
+            "unique_serial",
+            "exclusive_group"
           ]
         },
         "expandable": true,
