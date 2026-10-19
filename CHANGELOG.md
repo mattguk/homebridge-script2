@@ -7,6 +7,13 @@ from the package name. Accessory UUIDs are still generated from
 `homebridge-script2:<name>`, so switching from upstream keeps every accessory's
 HomeKit identity. Entries below this one are upstream's.
 
+## [1.2.0](https://github.com/mattguk/homebridge-script2/compare/mattguk-v1.1.1...mattguk-v1.2.0) (2026-10-19)
+
+
+### Features
+
+* re-read an exclusive_group member's state after an OFF from Home ([#4](https://github.com/mattguk/homebridge-script2/issues/4)) ([530aafd](https://github.com/mattguk/homebridge-script2/commit/530aafd934c20beec42d2b199be72e603111bbe8))
+
 ## [1.1.1](https://github.com/mattguk/homebridge-script2/compare/mattguk-v1.1.0...mattguk-v1.1.1) (2026-10-19)
 
 
