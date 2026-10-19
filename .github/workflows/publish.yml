@@ -1,23 +1,46 @@
-name: Publish to npm
-# Publishes @mattguk/homebridge-script2 when a GitHub release is published.
-# Uses npm trusted publishing (OIDC), so there is no npm token in this repo;
-# provenance is attached automatically. The trusted publisher must be configured
-# on npmjs.com for this package, naming this repository and this workflow file.
+name: Release
+# release-please keeps a release PR open that bumps the version and CHANGELOG
+# from Conventional Commits on master. Merging it tags mattguk-v<version>,
+# creates the GitHub release, and the publish job below sends it to npm.
+#
+# Publishing is in this workflow, not one triggered by `release: published`,
+# because a release created with GITHUB_TOKEN does not trigger other workflows.
+# The filename is load-bearing: npm's trusted publisher names publish.yml.
 #
 # Release tags are mattguk-v<version>, not v<version>: the fork carries
 # upstream's v* tags, and ours must never collide with them.
 on:
-  release:
-    types: [published]
+  push:
+    branches: [master]
 permissions:
   contents: read
-  id-token: write
 jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
   publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     environment: npm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -26,7 +49,7 @@ jobs:
       - run: npm install -g npm@^11.5.1
       - name: Tag matches package version
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
           version="mattguk-v$(node -p 'require("./package.json").version')"
           if [ "$TAG" != "$version" ]; then echo "Release tag $TAG does not match package.json $version"; exit 1; fi
