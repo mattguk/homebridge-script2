@@ -1,6 +1,6 @@
 {
   "name": "@mattguk/homebridge-script2",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "license": "MIT",
   "description": "Fork of homebridge-script2. HomeKit script switches with file or command state, shared reads, serialized actions and optional early acknowledgement",
   "keywords": [

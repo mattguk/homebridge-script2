@@ -7,6 +7,13 @@ from the package name. Accessory UUIDs are still generated from
 `homebridge-script2:<name>`, so switching from upstream keeps every accessory's
 HomeKit identity. Entries below this one are upstream's.
 
+## [1.1.0](https://github.com/mattguk/homebridge-script2/compare/mattguk-v1.0.4...mattguk-v1.1.0) (2026-10-19)
+
+
+### Features
+
+* add exclusive_group for mutually exclusive switches ([4fa8efc](https://github.com/mattguk/homebridge-script2/commit/4fa8efc824132c1baffbf68dce4daffeacb23132))
+
 ## 1.0.4 — 2026-10-13
 
 **Users on version 1.0.x can update normally. No configuration changes or migration are required. This also applies to 1.0.0-beta.1.**
@@ -115,4 +122,3 @@ Select **1.0.3** / **latest** in Homebridge UI and restart the instance or child
 
 - Added optional early HomeKit acknowledgement for long-running commands, serialized and coalesced SET requests, deferred state reads, and custom UI saving fixes.
 - See [published release notes](https://github.com/pponce/homebridge-script2/releases/tag/v0.4.6) for the original release history.
-
