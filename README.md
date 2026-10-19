@@ -236,6 +236,7 @@ Some sets of switches describe one selector: the inputs of an AV switch, say, wh
 
 - Only the HomeKit tiles change. The other members' `off` commands are **not** run; the device is assumed to have deselected them itself.
 - It acts on a successful command, not on confirmed device state. If the device ignored the command, the tiles are wrong until the next poll, which corrects them. Keep `polling` on.
+- Turning a member OFF from Home does not deselect it on the device. Half a second after its `off` command succeeds, the plugin reads the member's state again and shows the result, so the tile springs back to ON if the input is still selected instead of waiting for the next poll.
 - A member with its own ON or OFF still running or queued is left alone; the last command to finish wins.
 - A switch turned ON by anything other than Home (a front panel, say) is picked up by polling as before; the group does not act on it.
 - On/off switches only. Group names are matched exactly after trimming spaces, and a group with one member logs a warning.

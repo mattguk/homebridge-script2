@@ -171,6 +171,7 @@ function Script2DeviceLogic(log, config, commandExecutor = exec) {
   this.deadlines = new Set();
   this.stopped = false;
   this.resetTimer = null;
+  this.exclusiveOffTimer = null;
   this.triggerCallbacks = [];
   this.triggerInFlight = false;
   this.commandExecutor = this.executeCommand.bind(this);
@@ -281,6 +282,8 @@ Script2DeviceLogic.prototype.shutdown = function () {
   this.stopped = true;
   this.stopMonitoring();
   clearTimeout(this.resetTimer);
+  clearTimeout(this.exclusiveOffTimer);
+  this.exclusiveOffTimer = null;
   for (const deadline of this.deadlines) clearTimeout(deadline);
   this.deadlines.clear();
   this.resetTimer = null;
@@ -479,6 +482,7 @@ Script2DeviceLogic.prototype.startSetCommand = function (setRequest) {
     completedSet.callbacks.forEach((callbackEntry) => {
       this.settleSetCallback(callbackEntry, callbackError, powerOn);
     });
+    if (!callbackError && !powerOn && this.exclusiveGroup) this.confirmExclusiveOff();
   });
 };
 
@@ -772,6 +776,30 @@ Script2DeviceLogic.prototype.yieldToExclusivePeer = function (peerName) {
   // Reads parked by a post-set reconciliation that the generation change has
   // just made stale; nothing else would ever answer them.
   this.resolveDeferredStateRequests(null, false, "exclusive-group");
+};
+
+// A member is deselected by selecting another, so an OFF from Home usually
+// changes nothing on the device. Read it shortly after, rather than leave the
+// tile wrong until the next poll. The delay lets HomeKit finish with the OFF
+// first, so the corrected value is not overwritten by it.
+const EXCLUSIVE_OFF_CHECK_MS = 500;
+
+Script2DeviceLogic.prototype.confirmExclusiveOff = function () {
+  clearTimeout(this.exclusiveOffTimer);
+  const generation = this.stateGeneration;
+  this.exclusiveOffTimer = setTimeout(() => {
+    this.exclusiveOffTimer = null;
+    // A set of its own, or a peer's ON, since the OFF is newer than this check.
+    if (this.stopped || this.inFlightSet || generation !== this.stateGeneration) return;
+    this.getState((error, poweredOn) => {
+      if (error || generation !== this.stateGeneration) return;
+      if (poweredOn !== this.currentState) {
+        this.log.debug(`${this.name}: still ${poweredOn ? "ON" : "OFF"} after OFF (exclusive_group ${this.exclusiveGroup}).`);
+        this.currentState = poweredOn;
+        this.presentState(poweredOn);
+      }
+    }, "exclusive-off-check", true);
+  }, EXCLUSIVE_OFF_CHECK_MS);
 };
 
 Script2DeviceLogic.prototype.bindServices = function (platformAccessory, startMonitoring = true) {
